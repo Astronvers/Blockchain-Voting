@@ -1,0 +1,163 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CheckCircle, XCircle, Vote } from 'lucide-react';
+
+interface Candidate {
+  id: string;
+  name: string;
+  voteCount: number;
+}
+
+export default function VotingPlatform() {
+  const [activeTab, setActiveTab] = useState('vote');
+  const [voterId, setVoterId] = useState('');
+  const [selectedCandidate, setSelectedCandidate] = useState('');
+  const [message, setMessage] = useState<{ type: string; text: string }>({ type: '', text: '' });
+  const [isRegistered, setIsRegistered] = useState(false);
+
+  const candidates: Candidate[] = [
+    { id: 'C1', name: 'John Doe', voteCount: 12 },
+    { id: 'C2', name: 'Jane Smith', voteCount: 15 },
+    { id: 'C3', name: 'Alice Johnson', voteCount: 8 }
+  ];
+
+  const handleRegister = () => {
+    if (!voterId.trim()) {
+      setMessage({ type: 'error', text: 'Please enter a valid voter ID' });
+      return;
+    }
+    setIsRegistered(true);
+    setMessage({ type: 'success', text: 'Successfully registered!' });
+  };
+
+  const handleVote = () => {
+    if (!selectedCandidate) {
+      setMessage({ type: 'error', text: 'Please select a candidate' });
+      return;
+    }
+    setMessage({ type: 'success', text: 'Vote cast successfully!' });
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Vote className="h-6 w-6" />
+            Blockchain Voting Platform
+          </CardTitle>
+          <CardDescription>
+            Secure and transparent voting system powered by blockchain technology
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {message.text && (
+            <Alert className={`mb-4 ${message.type === 'error' ? 'bg-red-50' : 'bg-green-50'}`}>
+              {message.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+              <AlertTitle>{message.type === 'success' ? 'Success' : 'Error'}</AlertTitle>
+              <AlertDescription>{message.text}</AlertDescription>
+            </Alert>
+          )}
+          
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="register">Register</TabsTrigger>
+              <TabsTrigger value="vote">Vote</TabsTrigger>
+              <TabsTrigger value="results">Results</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="register">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Voter Registration</CardTitle>
+                  <CardDescription>Register to participate in the election</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Enter your Voter ID"
+                      value={voterId}
+                      onChange={(e) => setVoterId(e.target.value)}
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={handleRegister}>Register</Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="vote">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cast Your Vote</CardTitle>
+                  <CardDescription>Select your preferred candidate</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {candidates.map((candidate) => (
+                      <div
+                        key={candidate.id}
+                        className={`p-4 rounded-lg border cursor-pointer ${
+                          selectedCandidate === candidate.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-blue-200'
+                        }`}
+                        onClick={() => setSelectedCandidate(candidate.id)}
+                      >
+                        <div className="font-medium">{candidate.name}</div>
+                        <div className="text-sm text-gray-500">Candidate ID: {candidate.id}</div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={handleVote} disabled={!isRegistered}>
+                    Cast Vote
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="results">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Election Results</CardTitle>
+                  <CardDescription>Live voting results from the blockchain</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="relative overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs uppercase bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 font-medium">Candidate</th>
+                          <th className="px-6 py-3 font-medium">ID</th>
+                          <th className="px-6 py-3 font-medium text-right">Votes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {candidates.map((candidate) => (
+                          <tr key={candidate.id} className="border-b hover:bg-gray-50">
+                            <td className="px-6 py-4 font-medium">{candidate.name}</td>
+                            <td className="px-6 py-4">{candidate.id}</td>
+                            <td className="px-6 py-4 text-right">{candidate.voteCount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
