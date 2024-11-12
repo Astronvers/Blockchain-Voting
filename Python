@@ -1,0 +1,156 @@
+import hashlib
+import json
+import time
+from typing import List, Dict
+
+class Block:
+    def __init__(self, index: int, votes: List[Dict], timestamp: float, previous_hash: str):
+        self.index = index
+        self.votes = votes
+        self.timestamp = timestamp
+        self.previous_hash = previous_hash
+        self.nonce = 0
+        self.hash = self.calculate_hash()
+
+    def calculate_hash(self) -> str:
+        block_string = json.dumps({
+            "index": self.index,
+            "votes": self.votes,
+            "timestamp": self.timestamp,
+            "previous_hash": self.previous_hash,
+            "nonce": self.nonce
+        }, sort_keys=True)
+        return hashlib.sha256(block_string.encode()).hexdigest()
+
+class VotingBlockchain:
+    def __init__(self, difficulty: int = 4):
+        self.chain = [self.create_genesis_block()]
+        self.difficulty = difficulty
+        self.pending_votes = []
+        self.registered_voters = set()
+        self.candidates = {}
+
+    def create_genesis_block(self) -> Block:
+        return Block(0, [], time.time(), "0")
+
+    def get_latest_block(self) -> Block:
+        return self.chain[-1]
+
+    def add_candidate(self, candidate_id: str, name: str) -> None:
+        self.candidates[candidate_id] = {
+            "name": name,
+            "vote_count": 0
+        }
+
+    def register_voter(self, voter_id: str) -> bool:
+        if voter_id in self.registered_voters:
+            return False
+        self.registered_voters.add(voter_id)
+        return True
+
+    def cast_vote(self, voter_id: str, candidate_id: str) -> bool:
+        if (voter_id not in self.registered_voters or 
+            candidate_id not in self.candidates or 
+            self.has_voter_voted(voter_id)):
+            return False
+
+        vote = {
+            "voter_id": voter_id,
+            "candidate_id": candidate_id,
+            "timestamp": time.time()
+        }
+        self.pending_votes.append(vote)
+        return True
+
+    def mine_pending_votes(self, miner_address: str) -> Block:
+        if not self.pending_votes:
+            return None
+
+        block = Block(
+            len(self.chain),
+            self.pending_votes,
+            time.time(),
+            self.get_latest_block().hash
+        )
+
+        # Proof of Work
+        while not block.hash.startswith('0' * self.difficulty):
+            block.nonce += 1
+            block.hash = block.calculate_hash()
+
+        self.chain.append(block)
+        
+        # Update vote counts
+        for vote in self.pending_votes:
+            self.candidates[vote['candidate_id']]['vote_count'] += 1
+        
+        self.pending_votes = []
+        return block
+
+    def has_voter_voted(self, voter_id: str) -> bool:
+        for block in self.chain:
+            for vote in block.votes:
+                if vote['voter_id'] == voter_id:
+                    return True
+        return False
+
+    def get_vote_counts(self) -> Dict:
+        return {candidate_id: info['vote_count'] 
+                for candidate_id, info in self.candidates.items()}
+
+    def is_chain_valid(self) -> bool:
+        for i in range(1, len(self.chain)):
+            current_block = self.chain[i]
+            previous_block = self.chain[i-1]
+
+            if current_block.hash != current_block.calculate_hash():
+                return False
+
+            if current_block.previous_hash != previous_block.hash:
+                return False
+
+        return True
+
+# Example usage
+def demo_voting_system():
+    # Initialize blockchain
+    blockchain = VotingBlockchain(difficulty=4)
+
+    # Add candidates
+    blockchain.add_candidate("C1", "John Doe")
+    blockchain.add_candidate("C2", "Jane Smith")
+
+    # Register voters
+    voters = ["V1", "V2", "V3", "V4"]
+    for voter in voters:
+        blockchain.register_voter(voter)
+
+    # Cast votes
+    vote_pairs = [
+        ("V1", "C1"),
+        ("V2", "C2"),
+        ("V3", "C1"),
+        ("V4", "C1")
+    ]
+
+    for voter_id, candidate_id in vote_pairs:
+        if blockchain.cast_vote(voter_id, candidate_id):
+            print(f"Vote cast successfully by {voter_id} for {candidate_id}")
+        else:
+            print(f"Failed to cast vote for {voter_id}")
+
+    # Mine the block of votes
+    blockchain.mine_pending_votes("miner1")
+
+    # Get results
+    results = blockchain.get_vote_counts()
+    print("\nVoting Results:")
+    for candidate_id, votes in results.items():
+        candidate_name = blockchain.candidates[candidate_id]["name"]
+        print(f"{candidate_name}: {votes} votes")
+
+    # Verify blockchain integrity
+    print(f"\nBlockchain validity: {blockchain.is_chain_valid()}")
+
+if __name__ == "__main__":
+    demo_voting_system()
