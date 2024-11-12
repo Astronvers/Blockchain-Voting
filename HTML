@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Voting System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+            --background-color: #f8fafc;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: var(--background-color);
+            color: #1a1a1a;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: #e5e7eb;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: var(--secondary-color);
+        }
+
+        .results {
+            display: grid;
+            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .block {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .block-header {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .block-detail {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: start;
+        }
+
+        .block-label {
+            font-weight: 500;
+            color: #4b5563;
+        }
+
+        .block-value {
+            word-break: break-all;
+            overflow-wrap: break-word;
+            background: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .verification-status {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 6px;
+            background: #f0fdf4;
+            color: #166534;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Blockchain Voting System</h1>
+            <p>Secure and transparent voting powered by blockchain technology</p>
+        </div>
+
+        <div class="card">
+            <div class="tab-container">
+                <button class="tab active" onclick="showTab('vote')">Cast Vote</button>
+                <button class="tab" onclick="showTab('results')">Results</button>
+                <button class="tab" onclick="showTab('verify')">Verify Chain</button>
+                <button class="tab" onclick="showTab('explorer')">Explorer</button>
+            </div>
+
+            <div id="vote-section" class="section active">
+                <form id="voting-form" onsubmit="castVote(event)">
+                    <div class="form-group">
+                        <label for="voter-id">Voter ID</label>
+                        <input type="text" id="voter-id" required placeholder="Enter your voter ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="candidate">Select Candidate</label>
+                        <select id="candidate" required>
+                            <option value="">Choose a candidate</option>
+                            <option value="candidate1">Candidate 1</option>
+                            <option value="candidate2">Candidate 2</option>
+                            <option value="candidate3">Candidate 3</option>
+                        </select>
+                    </div>
+                    <button type="submit">Cast Vote</button>
+                </form>
+            </div>
+
+            <div id="results-section" class="section">
+                <h2>Current Results</h2>
+                <div class="results" id="results-container"></div>
+            </div>
+
+            <div id="verify-section" class="section">
+                <h2>Blockchain Verification</h2>
+                <p>Verify the integrity of the voting chain</p>
+                <button onclick="verifyBlockchain()">Verify Now</button>
+                <div id="verification-status"></div>
+            </div>
+
+            <div id="explorer-section" class="section">
+                <h2>Blockchain Explorer</h2>
+                <p>View all blocks in the chain</p>
+                <div id="blockchain-explorer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class Block {
+            constructor(index, timestamp, vote, previousHash = '') {
+                this.index = index;
+                this.timestamp = timestamp;
+                this.vote = vote;
+                this.previousHash = previousHash;
+                this.nonce = 0;
+                this.hash = this.calculateHash();
+            }
+
+            calculateHash() {
+                return CryptoJS.SHA256(
+                    this.index +
+                    this.previousHash +
+                    this.timestamp +
+                    JSON.stringify(this.vote) +
+                    this.nonce
+                ).toString();
+            }
+
+            mineBlock(difficulty) {
+                while (this.hash.substring(0, difficulty) !== Array(difficulty + 1).join("0")) {
+                    this.nonce++;
+                    this.hash = this.calculateHash();
+                }
+            }
+        }
+
+        class Blockchain {
+            constructor() {
+                this.chain = [this.createGenesisBlock()];
+                this.difficulty = 2;
+                this.voters = new Set();
+            }
+
+            createGenesisBlock() {
+                return new Block(0, Date.now(), { type: "genesis", data: "Genesis Block" });
+            }
+
+            getLatestBlock() {
+                return this.chain[this.chain.length - 1];
+            }
+
+            addBlock(vote) {
+                const block = new Block(
+                    this.chain.length,
+                    Date.now(),
+                    vote,
+                    this.getLatestBlock().hash
+                );
+                block.mineBlock(this.difficulty);
+                this.chain.push(block);
+            }
+
+            isChainValid() {
+                for (let i = 1; i < this.chain.length; i++) {
+                    const currentBlock = this.chain[i];
+                    const previousBlock = this.chain[i - 1];
+
+                    if (currentBlock.hash !== currentBlock.calculateHash()) {
+                        return false;
+                    }
+
+                    if (currentBlock.previousHash !== previousBlock.hash) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            addVote(voterId, candidate) {
+                if (this.voters.has(voterId)) {
+                    return false;
+                }
+
+                const vote = {
+                    voterId: CryptoJS.SHA256(voterId).toString(),
+                    candidate: candidate,
+                    timestamp: Date.now()
+                };
+
+                this.voters.add(voterId);
+                this.addBlock(vote);
+                return true;
+            }
+
+            getResults() {
+                const results = {
+                    candidate1: 0,
+                    candidate2: 0,
+                    candidate3: 0
+                };
+
+                for (const block of this.chain) {
+                    if (block.vote.candidate) {
+                        results[block.vote.candidate]++;
+                    }
+                }
+
+                return results;
+            }
+        }
+
+        const votingChain = new Blockchain();
+
+        function showTab(tabId) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Deactivate all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(`${tabId}-section`).classList.add('active');
+            
+            // Activate selected tab
+            event.target.classList.add('active');
+
+            if (tabId === 'results') {
+                updateResults();
+            } else if (tabId === 'explorer') {
+                updateBlockchainExplorer();
+            }
+        }
+
+        function castVote(event) {
+            event.preventDefault();
+
+            const voterId = document.getElementById('voter-id').value;
+            const candidate = document.getElementById('candidate').value;
+
+            if (votingChain.addVote(voterId, candidate)) {
+                showMessage('Vote cast successfully! Block is being mined...', 'success');
+                updateResults();
+                updateBlockchainExplorer();
+                event.target.reset();
+            } else {
+                showMessage('Error: You have already voted!', 'error');
+            }
+        }
+
+        function updateResults() {
+            const results = votingChain.getResults();
+            const container = document.getElementById('results-container');
+            container.innerHTML = '';
+
+            Object.entries(results).forEach(([candidate, votes]) => {
+                container.innerHTML += `
+                    <div class="block">
+                        <h3>${formatCandidateName(candidate)}</h3>
+                        <div class="votes">${votes}</div>
+                        <div>votes</div>
+                    </div>
+                `;
+            });
+        }
+
+        function updateBlockchainExplorer() {
+            const explorer = document.getElementById('blockchain-explorer');
+            explorer.innerHTML = '';
+
+            votingChain.chain.forEach(block => {
+                const blockElement = document.createElement('div');
+                blockElement.className = 'block';
+                
+                blockElement.innerHTML = `
+                    <div class="block-header">Block #${block.index}</div>
+                    
+                    <div class="block-detail">
+                        <div class="block-label">Hash:</div>
+                        <div class="block-value">${block.hash}</div>
+                    </div>
+
+                    <div class="block-detail">
+                        <div class="block-label">Previous Hash:</div>
+                        <div class="block-value">${block.previousHash}</div>
+                    </div>
+
+                    <div class="block-detail">
+                        <div class="block-label">Timestamp:</div>
+                        <div class="block-value">${new Date(block.timestamp).toLocaleString()}</div>
+                    </div>
+
+                    <div class="block-detail">
+                        <div class="block-label">Nonce:</div>
+                        <div class="block-value">${block.nonce}</div>
+                    </div>
+
+                    <div class="block-detail">
+                        <div class="block-label">Data:</div>
+                        <div class="block-value">${JSON.stringify(block.vote, null, 2)}</div>
+                    </div>
+                `;
+                
+                explorer.appendChild(blockElement);
+            });
+        }
+
+        function verifyBlockchain() {
+            const status = document.getElementById('verification-status');
+            status.innerHTML = '<div class="loading"></div> Verifying blockchain...';
+
+            setTimeout(() => {
+                const isValid = votingChain.isChainValid();
+                status.innerHTML = `
+                    <div class="verification-status">
+                        ${isValid ? '✓ Blockchain verified: All votes are secure and unchanged' : '❌ Blockchain integrity compromised!'}
+                    </div>
+                `;
+            }, 1000);
+        }
+
+        function formatCandidateName(candidate) {
+            return candidate.charAt(0).toUpperCase() + 
+                   candidate.slice(1).replace(/([A-Z])/g, ' $1');
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+
+            const form = document.getElementById('voting-form');
+            form.insertBefore(messageDiv, form.firstChild);
+
+            setTimeout(() => messageDiv.remove(), 3000);
+        }
+    </script>
+</body>
+</html>
